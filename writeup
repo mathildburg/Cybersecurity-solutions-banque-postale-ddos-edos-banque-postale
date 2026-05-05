@@ -1,1 +1,170 @@
+# Analyse de l'attaque DDoS contre La Banque Postale
+## Writeup rédigé par Mathilde Burgaud
 
+---
+
+## 0. Pourquoi ce sujet ?
+
+Je suis cliente à La Banque Postale depuis l'adolescence,
+où j'y ai ouvert mon premier livret jeune à 14 ou 15 ans.
+C'est une banque historiquement liée au service public français,
+reconnue pour son accessibilité et sa présence dans les territoires
+ruraux, là où les autres établissements bancaires sont parfois absents.
+
+Avec près de 9 millions de clients actifs, dont 1,1 million de
+personnes exclues du système bancaire traditionnel qui y accèdent
+gratuitement grâce à sa mission de service public, une attaque contre
+La Banque Postale n'est pas un incident anodin — c'est une atteinte
+directe aux personnes les plus modestes financièrement.
+
+Lors des attaques de décembre 2025 et janvier 2026, j'ai moi-même 
+vécu l'impossibilité d'accéder à mes comptes pendant plusieurs jours.
+
+L'attribution de l'attaque au groupe pro-russe NoName057(16) soulève
+également des questions politiques : les infrastructures bancaires
+du service public sont-elles suffisamment protégées face à des attaques
+idéologiquement motivées ?
+
+C'est cette réflexion qui m'a conduit à concevoir ces solutions.
+
+---
+
+## 1. Contexte
+
+Entre le 22 décembre 2025 et le 5 janvier 2026, La Banque Postale a subi
+deux vagues successives d'attaques DDoS, qualifiées de plus grandes jamais
+menées contre un établissement bancaire français.
+Le groupe hacktiviste pro-russe NoName057(16) a revendiqué la première vague.
+Une enquête a été ouverte par le parquet de Paris et confiée à la DGSI.
+
+Un détail important : la première attaque a débuté le 22 décembre 2025,
+en pleine période des fêtes. Ce timing n'est probablement pas anodin —
+les équipes de sécurité sont réduites pendant les congés, et les
+infrastructures sont déjà configurées pour accepter des pics de trafic
+légitimes liés aux achats et virements de fin d'année. Les attaquants
+ont donc exploité une fenêtre de vulnérabilité à la fois humaine
+et technique.
+
+---
+
+## 2. Qu'est-ce qu'une attaque DDoS ?
+
+DDoS signifie Distributed Denial of Service — déni de service distribué.
+Le principe est simple : saturer un serveur avec un volume massif de
+requêtes simultanées pour le rendre inaccessible aux vrais utilisateurs.
+
+Lors de l'attaque de La Banque Postale, plusieurs milliards de requêtes
+par seconde ont été envoyées depuis des millions d'adresses IP compromises
+— des appareils infectés à l'insu de leurs propriétaires, appelés botnets.
+
+Une attaque DDoS ne vole pas de données. Elle prive les clients d'accès
+à leurs services. Elle peut aussi servir de diversion pour masquer
+une tentative d'intrusion simultanée.
+
+---
+
+## 3. Problématique
+
+Pour une banque, l'indisponibilité du service en ligne a plusieurs
+conséquences :
+
+- Les clients ne peuvent plus accéder à leurs comptes
+- La confiance dans l'institution est érodée
+- Si l'infrastructure est hébergée sur le cloud, une multiplication
+  automatique des instances pour absorber le trafic peut entraîner
+  une surfacturation massive
+
+Cette dernière problématique est souvent sous-estimée : sans système
+de plafonnement, une attaque DDoS peut coûter très cher à la victime,
+même si ses données restent intactes.
+
+Note : le budget cap est un outil de gestion financière cloud permanent —
+pas uniquement anti-DDoS. Il protège aussi contre les erreurs de
+configuration, les bugs, ou les pics de trafic légitimes mal anticipés.
+
+---
+
+## 4. Proposition de solution : deux scripts complémentaires
+
+J'ai développé deux scripts Python qui forment un système de défense
+complet. L'un détecte et bloque, l'autre protège financièrement.
+
+### Script 1 — moniteur_ddos.py
+Simule la logique de décision d'un système de monitoring en temps réel.
+Le principe repose sur trois niveaux de filtrage successifs —
+comme des filets de pêche superposés :
+
+| Niveau | Seuil | Action |
+|--------|-------|--------|
+| ✅ NORMAL | < 500 req/sec | Surveillance passive |
+| ⚠️ ALERTE | 500 - 2000 req/sec | Analyse active des logs en temps réel |
+| 🚨 CRITIQUE | > 2000 req/sec | Blocage du trafic + notification équipe sécurité |
+
+### Script 2 — budget_cap.py
+Inspiré du service AWS Budgets d'Amazon Web Services.
+Simule un mécanisme de plafonnement financier en cas d'auto-scaling
+excessif lors d'une attaque.
+
+Les deux scripts communiquent : quand le monitoring bloque le trafic
+critique, le budget cap enregistre les coûts évités. Quand le trafic
+n'est pas bloqué, le budget cap comptabilise les coûts réels et
+déclenche une alerte si le plafond est atteint.
+
+Note : l'infrastructure réelle de La Banque Postale n'est pas connue
+publiquement. Ces scripts illustrent une logique applicable à tout
+hébergeur cloud.
+
+Les scripts sont disponibles ici :
+https://github.com/mathildburg/monitoring-ddos-banque-postale
+
+---
+
+## 4bis. Impact financier réel — simulation chiffrée
+
+Les scripts utilisent des valeurs simplifiées pour illustrer la logique.
+Voici une projection réaliste basée sur les tarifs AWS EC2 On-Demand
+(m5.large, région Europe, source : aws.amazon.com/ec2/pricing/on-demand).
+
+Hypothèses pour une grande banque comme La Banque Postale :
+- 1 000 instances en fonctionnement normal
+- Jusqu'à 50 000 instances en auto-scaling lors d'une attaque
+- Tarif : 0,096$/heure par instance
+
+Coût par seconde selon le niveau de trafic :
+- NORMAL : 0,027$/seconde
+- ALERTE : 0,267$/seconde
+- CRITIQUE : 1,33$/seconde
+
+Sur une heure d'attaque SANS protection : environ 1 948$
+
+Sur une heure d'attaque AVEC monitoring et budget cap : environ 352$
+
+Soit 1 596$ économisés en une seule heure.
+
+L'attaque de La Banque Postale ayant duré plusieurs jours,
+le système de protection représente une économie potentielle
+de plus de 100 000$ sur la durée totale de l'incident.
+
+---
+
+## 5. Limites et perspectives
+
+Ces scripts sont des maquettes fonctionnelles. Ils simulent la logique
+de décision mais ne se connectent pas à un vrai serveur.
+
+Dans un système de production réel, il faudrait :
+
+- Connecter le monitoring à un **SIEM** (Security Information
+  and Event Management) comme Splunk ou IBM QRadar,
+  utilisés dans le secteur bancaire
+- Intégrer un système de **rate limiting** au niveau du pare-feu
+- Distinguer automatiquement les adresses IP légitimes
+  des adresses IP malveillantes via analyse comportementale
+
+Ces perspectives constituent la suite logique de ce projet
+dans un contexte professionnel réel.
+
+---
+
+*Mathilde Burgaud — Mai 2026*
+*candidate cybersécurité*
